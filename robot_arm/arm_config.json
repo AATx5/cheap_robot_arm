@@ -1,0 +1,85 @@
+{
+  "serial": {
+    "port": "COM4",
+    "baud": 115200,
+    "auto_connect": false
+  },
+  "drivetrain": {
+    "motor_steps_per_rev": 200,
+    "microsteps": 16,
+    "gear_ratio": {
+      "j1": 7,
+      "j2": 7,
+      "j3": 7
+    },
+    "invert": {
+      "j1": true,
+      "j2": true,
+      "j3": false
+    }
+  },
+  "geometry": {
+    "base_height": 120,
+    "base_offset": 0,
+    "l1": 200,
+    "l2": 200
+  },
+  "limits": {
+    "j1": {
+      "min": -170,
+      "max": 170
+    },
+    "j2": {
+      "min": -130,
+      "max": 130
+    },
+    "j3": {
+      "min": -150,
+      "max": 150
+    }
+  },
+  "motion": {
+    "feed_deg_per_min": 1200,
+    "jog_feed_deg_per_min": 900,
+    "max_rate_deg_per_min": {
+      "j1": 1800.0,
+      "j2": 1800.0,
+      "j3": 1800.0
+    },
+    "accel_deg_per_sec2": {
+      "j1": 200.0,
+      "j2": 200.0,
+      "j3": 200.0
+    },
+    "linear_segment_mm": 3.0,
+    "elbow_up": true
+  },
+  "homing": {
+    "enabled": false,
+    "seek_deg_per_min": 300.0,
+    "pull_off_deg": 2.0,
+    "home_angles": {
+      "j1": 0,
+      "j2": 90,
+      "j3": 0
+    },
+    "park_angles": {
+      "j1": 0.0,
+      "j2": 90.0,
+      "j3": -90.0
+    }
+  },
+  "poses": {
+    "park": {
+      "j1": 0.0,
+      "j2": 90.0,
+      "j3": -90.0
+    },
+    "reach out": {
+      "j1": 0.0,
+      "j2": 20.0,
+      "j3": -10.0
+    }
+  },
+  "sequences": {}
+}

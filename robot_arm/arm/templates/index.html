@@ -1,0 +1,755 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Arm Control</title>
+<style>
+:root{
+  --bg:#0e1116; --panel:#161b22; --panel2:#1c232c; --line:#2a323d;
+  --txt:#e6edf3; --dim:#8b949e; --accent:#2f81f7; --accent2:#1f6feb;
+  --ok:#3fb950; --warn:#d29922; --err:#f85149; --j1:#58a6ff; --j2:#3fb950; --j3:#d29922;
+}
+*{box-sizing:border-box}
+html,body{margin:0;height:100%}
+body{background:var(--bg);color:var(--txt);font:14px/1.45 ui-sans-serif,system-ui,'Segoe UI',Roboto,sans-serif;-webkit-user-select:none;user-select:none}
+button,input,select,textarea{font:inherit;color:inherit}
+button{background:var(--panel2);border:1px solid var(--line);border-radius:7px;padding:7px 12px;cursor:pointer;transition:.12s}
+button:hover:not(:disabled){background:#28313d;border-color:#3d4855}
+button:active:not(:disabled){transform:translateY(1px)}
+button:disabled{opacity:.4;cursor:not-allowed}
+button.primary{background:var(--accent2);border-color:var(--accent)}
+button.primary:hover:not(:disabled){background:var(--accent)}
+button.danger{background:#8b1d1d;border-color:#b62324}
+button.danger:hover:not(:disabled){background:#b62324}
+button.ghost{background:transparent}
+input,select,textarea{background:#0d1117;border:1px solid var(--line);border-radius:6px;padding:6px 8px;width:100%}
+input:focus,select:focus{outline:none;border-color:var(--accent)}
+input[type=number]{-moz-appearance:textfield}
+
+/* ---------- layout ---------- */
+header{display:flex;align-items:center;gap:10px;padding:8px 14px;background:var(--panel);border-bottom:1px solid var(--line);flex-wrap:wrap;position:sticky;top:0;z-index:20}
+.brand{font-weight:700;letter-spacing:.4px;margin-right:6px;white-space:nowrap}
+.brand span{color:var(--accent)}
+.spacer{flex:1}
+.pill{display:inline-flex;align-items:center;gap:6px;padding:4px 11px;border-radius:20px;background:var(--panel2);border:1px solid var(--line);font-size:12px;font-weight:600;white-space:nowrap}
+.dot{width:8px;height:8px;border-radius:50%;background:var(--dim)}
+.dot.ok{background:var(--ok);box-shadow:0 0 8px var(--ok)}
+.dot.run{background:var(--accent);box-shadow:0 0 8px var(--accent);animation:pulse 1s infinite}
+.dot.warn{background:var(--warn);box-shadow:0 0 8px var(--warn)}
+.dot.err{background:var(--err);box-shadow:0 0 8px var(--err)}
+@keyframes pulse{50%{opacity:.35}}
+
+main{display:grid;grid-template-columns:340px minmax(360px,1fr) 340px;gap:12px;padding:12px;align-items:start}
+@media(max-width:1200px){main{grid-template-columns:1fr 1fr}}
+@media(max-width:780px){main{grid-template-columns:1fr}}
+
+.card{background:var(--panel);border:1px solid var(--line);border-radius:11px;margin-bottom:12px;overflow:hidden}
+.card h2{margin:0;padding:10px 13px;font-size:12px;letter-spacing:1.1px;text-transform:uppercase;color:var(--dim);border-bottom:1px solid var(--line);display:flex;align-items:center;gap:8px}
+.card h2 .r{margin-left:auto;text-transform:none;letter-spacing:0;font-size:11px}
+.card .body{padding:13px}
+.row{display:flex;gap:8px;align-items:center}
+.row+.row{margin-top:8px}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.grid3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px}
+label.f{display:block;font-size:11px;color:var(--dim);margin-bottom:3px;text-transform:uppercase;letter-spacing:.6px}
+.mono{font-family:ui-monospace,'SF Mono',Menlo,Consolas,monospace;font-variant-numeric:tabular-nums}
+.hint{font-size:11.5px;color:var(--dim);margin-top:8px;line-height:1.4}
+
+/* ---------- joints ---------- */
+.joint{padding:10px;border-radius:9px;background:var(--panel2);border:1px solid var(--line)}
+.joint+.joint{margin-top:9px}
+.joint .top{display:flex;align-items:baseline;gap:8px;margin-bottom:7px}
+.joint .name{font-weight:700;font-size:13px}
+.joint .sub{font-size:11px;color:var(--dim)}
+.joint .val{margin-left:auto;font-size:17px;font-weight:700}
+.bar{height:5px;border-radius:3px;background:#0d1117;position:relative;margin:8px 0 9px;overflow:hidden}
+.bar i{position:absolute;top:0;bottom:0;width:3px;border-radius:2px;background:#fff;transition:left .12s linear}
+.bar u{position:absolute;top:0;bottom:0;opacity:.28;border-radius:3px}
+.jogrow{display:grid;grid-template-columns:repeat(6,1fr);gap:5px}
+.jogrow button{padding:6px 0;font-size:12px;font-weight:600}
+.lim{border-color:var(--err)!important;color:var(--err)}
+
+.steps{display:flex;gap:5px;flex-wrap:wrap}
+.steps button{flex:1;min-width:44px;padding:5px 0;font-size:12px}
+.steps button.on{background:var(--accent2);border-color:var(--accent)}
+
+/* ---------- viz ---------- */
+.viz{display:grid;grid-template-columns:1fr 190px;gap:10px}
+@media(max-width:520px){.viz{grid-template-columns:1fr}}
+svg{display:block;width:100%;background:#0b0e13;border-radius:9px;border:1px solid var(--line)}
+.vlabel{font-size:10px;fill:var(--dim);font-family:ui-monospace,monospace}
+
+/* ---------- lists ---------- */
+.list{max-height:190px;overflow:auto;border:1px solid var(--line);border-radius:8px;background:#0d1117}
+.item{display:flex;align-items:center;gap:8px;padding:6px 9px;border-bottom:1px solid var(--line);font-size:12.5px}
+.item:last-child{border-bottom:none}
+.item:hover{background:#141a21}
+.item .nm{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.item .ang{font-size:11px;color:var(--dim)}
+.item button{padding:2px 8px;font-size:11px}
+.item.active{background:#182338;box-shadow:inset 2px 0 0 var(--accent)}
+.empty{padding:14px;text-align:center;color:var(--dim);font-size:12px}
+
+/* ---------- console ---------- */
+#console{height:190px;overflow:auto;background:#0a0d12;border:1px solid var(--line);border-radius:8px;padding:8px;font-family:ui-monospace,monospace;font-size:11.5px;user-select:text}
+#console div{white-space:pre-wrap;word-break:break-all;padding:1px 0}
+.l-tx{color:var(--accent)} .l-rx{color:#7d8590} .l-info{color:var(--dim)}
+.l-error{color:var(--err)} .l-warn{color:var(--warn)} .l-ui{color:var(--ok)}
+
+/* ---------- tabs / misc ---------- */
+.tabs{display:flex;gap:4px;padding:8px 13px 0}
+.tabs button{border-radius:7px 7px 0 0;border-bottom:none;font-size:12px;padding:6px 12px;background:transparent}
+.tabs button.on{background:var(--panel2);color:#fff}
+.pane{display:none} .pane.on{display:block}
+.banner{padding:9px 13px;font-size:12.5px;font-weight:600;display:none;align-items:center;gap:9px}
+.banner.show{display:flex}
+.banner.err{background:#3d1113;color:#ffa198;border-bottom:1px solid var(--err)}
+.banner.warn{background:#3b2a06;color:#f0c674;border-bottom:1px solid var(--warn)}
+kbd{background:var(--panel2);border:1px solid var(--line);border-bottom-width:2px;border-radius:4px;padding:0 5px;font-size:11px;font-family:ui-monospace,monospace}
+#toast{position:fixed;bottom:18px;left:50%;transform:translateX(-50%) translateY(80px);background:var(--panel2);border:1px solid var(--line);border-radius:9px;padding:10px 18px;font-size:13px;z-index:99;opacity:0;transition:.25s;pointer-events:none;max-width:90vw}
+#toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+#toast.err{border-color:var(--err);color:#ffa198}
+#toast.ok{border-color:var(--ok)}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="brand">ARM<span>·</span>CTL</div>
+  <select id="port" style="width:190px"></select>
+  <button class="ghost" id="refreshPorts" title="Rescan serial ports">&#8635;</button>
+  <button class="primary" id="btnConnect">Connect</button>
+  <div class="pill"><span class="dot" id="stateDot"></span><span id="stateTxt">Disconnected</span></div>
+  <div class="pill mono" id="posPill">J1 0.0&deg; &nbsp; J2 0.0&deg; &nbsp; J3 0.0&deg;</div>
+  <div class="spacer"></div>
+  <button id="btnHold">Pause</button>
+  <button id="btnResume">Resume</button>
+  <button class="danger" id="btnEstop" style="font-weight:800;letter-spacing:.5px">&#9209; E-STOP</button>
+</header>
+
+<div class="banner err" id="alarmBanner">
+  <span id="alarmTxt"></span>
+  <button style="margin-left:auto" id="btnUnlock">Unlock ($X)</button>
+</div>
+<div class="banner warn" id="warnBanner"><span id="warnTxt"></span></div>
+
+<main>
+  <!-- ================= LEFT : JOINTS ================= -->
+  <div>
+    <div class="card">
+      <h2>Joint jog <span class="r mono" id="feedNow"></span></h2>
+      <div class="body">
+        <div class="row" style="margin-bottom:10px">
+          <div style="flex:1">
+            <label class="f">Step size (deg)</label>
+            <div class="steps" id="stepBtns"></div>
+          </div>
+        </div>
+        <div class="row" style="margin-bottom:11px">
+          <div style="flex:1"><label class="f">Jog feed (deg/min)</label><input type="number" id="jogFeed" value="900" min="10" step="50"></div>
+          <div style="flex:1"><label class="f">Move feed (deg/min)</label><input type="number" id="moveFeed" value="1200" min="10" step="50"></div>
+        </div>
+        <div id="joints"></div>
+        <div class="row" style="margin-top:10px">
+          <button style="flex:1" id="btnStopJog">Cancel jog</button>
+          <button style="flex:1" id="btnPark">Park</button>
+        </div>
+        <div class="hint">
+          Keyboard: <kbd>A</kbd>/<kbd>D</kbd> base &nbsp; <kbd>W</kbd>/<kbd>S</kbd> shoulder &nbsp;
+          <kbd>Q</kbd>/<kbd>E</kbd> elbow &nbsp; <kbd>1</kbd>-<kbd>5</kbd> step size &nbsp;
+          <kbd>Space</kbd> E-stop
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>Zero &amp; home</h2>
+      <div class="body">
+        <div class="grid2">
+          <button id="btnHome">Home ($H)</button>
+          <button id="btnSetHome">Set current as home</button>
+        </div>
+        <div class="hint">
+          No limit switches? Move the arm by hand to a known pose, type the angles below and hit
+          <em>Set current as home</em> &mdash; that writes the work offset so the program knows where it is.
+        </div>
+        <div class="grid3" style="margin-top:9px">
+          <div><label class="f">J1</label><input type="number" id="hz1" value="0" step="1"></div>
+          <div><label class="f">J2</label><input type="number" id="hz2" value="90" step="1"></div>
+          <div><label class="f">J3</label><input type="number" id="hz3" value="0" step="1"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ================= MIDDLE : VIZ + CARTESIAN ================= -->
+  <div>
+    <div class="card">
+      <h2>Arm view <span class="r mono" id="tipReadout"></span></h2>
+      <div class="body">
+        <div class="viz">
+          <svg id="side" viewBox="0 0 460 330"></svg>
+          <svg id="top" viewBox="0 0 200 200"></svg>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>Cartesian target (inverse kinematics)</h2>
+      <div class="body">
+        <div class="grid3">
+          <div><label class="f">X (mm)</label><input type="number" id="tx" value="250" step="5"></div>
+          <div><label class="f">Y (mm)</label><input type="number" id="ty" value="0" step="5"></div>
+          <div><label class="f">Z (mm)</label><input type="number" id="tz" value="150" step="5"></div>
+        </div>
+        <div class="row" style="margin-top:9px">
+          <button style="flex:1" id="btnHere">Use current position</button>
+          <label class="row" style="gap:6px;font-size:12.5px;white-space:nowrap">
+            <input type="checkbox" id="elbowUp" checked style="width:auto"> elbow up
+          </label>
+        </div>
+        <div id="ikOut" class="mono" style="margin-top:10px;padding:9px;border-radius:8px;background:#0d1117;border:1px solid var(--line);font-size:12.5px;min-height:38px"></div>
+        <div class="row" style="margin-top:9px">
+          <button class="primary" style="flex:1" id="btnGoJoint">Go &mdash; joint move</button>
+          <button style="flex:1" id="btnGoLinear">Go &mdash; straight line</button>
+        </div>
+        <div class="hint">
+          A <em>joint move</em> interpolates the motors, so the tip swings along an arc &mdash; fast and smooth.
+          A <em>straight line</em> chops the path into small IK-solved segments so the tip travels in an actual
+          line; it sends many more commands.
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>Console</h2>
+      <div class="body">
+        <div id="console"></div>
+        <div class="row" style="margin-top:8px">
+          <input class="mono" id="mdi" placeholder="G-code / $ command, Enter to send  (e.g. $$, G90 G1 X10 F600)">
+          <button id="btnMdi">Send</button>
+          <button class="ghost" id="btnClearLog">Clear</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ================= RIGHT : POSES / SEQUENCES / SETTINGS ================= -->
+  <div>
+    <div class="card">
+      <div class="tabs">
+        <button class="on" data-tab="poses">Poses</button>
+        <button data-tab="seq">Sequences</button>
+        <button data-tab="cfg">Settings</button>
+      </div>
+
+      <!-- poses -->
+      <div class="pane on body" id="pane-poses">
+        <div class="row">
+          <input id="poseName" placeholder="Pose name">
+          <button class="primary" id="btnSavePose">Save</button>
+        </div>
+        <div class="list" style="margin-top:9px" id="poseList"></div>
+        <div class="hint">Saving stores the arm's <em>current</em> joint angles. Click a pose name to move there.</div>
+      </div>
+
+      <!-- sequences -->
+      <div class="pane body" id="pane-seq">
+        <div class="row">
+          <select id="seqSelect"></select>
+          <button id="btnSeqNew" title="New sequence">+</button>
+          <button id="btnSeqDel" title="Delete sequence">&#128465;</button>
+        </div>
+        <div class="list" style="margin-top:9px;max-height:220px" id="seqList"></div>
+        <div class="row" style="margin-top:9px">
+          <button style="flex:1" id="btnSeqAdd">+ Add current pose</button>
+          <div style="width:86px"><input type="number" id="seqDwell" value="0.5" step="0.1" min="0" title="dwell seconds"></div>
+        </div>
+        <div class="row" style="margin-top:8px">
+          <button class="primary" style="flex:1" id="btnSeqRun">&#9654; Run</button>
+          <label class="row" style="gap:5px;font-size:12px"><input type="checkbox" id="seqLoop" style="width:auto"> loop</label>
+          <button class="danger" id="btnSeqStop">Stop</button>
+        </div>
+        <div class="row" style="margin-top:8px">
+          <input id="seqName" placeholder="Save as...">
+          <button id="btnSeqSave">Save</button>
+        </div>
+        <div id="seqProgress" class="hint"></div>
+      </div>
+
+      <!-- settings -->
+      <div class="pane body" id="pane-cfg">
+        <label class="f">Geometry (mm)</label>
+        <div class="grid2">
+          <div><label class="f">Base height</label><input type="number" id="c_bh" step="1"></div>
+          <div><label class="f">Base offset</label><input type="number" id="c_bo" step="1"></div>
+          <div><label class="f">L1 upper arm</label><input type="number" id="c_l1" step="1"></div>
+          <div><label class="f">L2 forearm</label><input type="number" id="c_l2" step="1"></div>
+        </div>
+
+        <label class="f" style="margin-top:12px">Drivetrain</label>
+        <div class="grid2">
+          <div><label class="f">Motor steps/rev</label><input type="number" id="c_msr" step="1"></div>
+          <div><label class="f">Microsteps</label>
+            <select id="c_us"><option>1</option><option>2</option><option>4</option><option>8</option><option>16</option><option>32</option></select>
+          </div>
+          <div><label class="f">J1 gear ratio</label><input type="number" id="c_g1" step="0.1"></div>
+          <div><label class="f">J2 gear ratio</label><input type="number" id="c_g2" step="0.1"></div>
+          <div><label class="f">J3 gear ratio</label><input type="number" id="c_g3" step="0.1"></div>
+        </div>
+        <div class="mono hint" id="spdOut"></div>
+
+        <label class="f" style="margin-top:12px">Joint limits (deg)</label>
+        <div class="grid2" id="limGrid"></div>
+
+        <label class="f" style="margin-top:12px">Invert direction</label>
+        <div class="row" style="font-size:12.5px">
+          <label class="row" style="gap:5px"><input type="checkbox" id="c_i1" style="width:auto">J1</label>
+          <label class="row" style="gap:5px"><input type="checkbox" id="c_i2" style="width:auto">J2</label>
+          <label class="row" style="gap:5px"><input type="checkbox" id="c_i3" style="width:auto">J3</label>
+          <label class="row" style="gap:5px;margin-left:auto"><input type="checkbox" id="c_home" style="width:auto">limit switches fitted</label>
+        </div>
+
+        <div class="row" style="margin-top:12px">
+          <button class="primary" style="flex:1" id="btnSaveCfg">Save config</button>
+          <button style="flex:1" id="btnPushCfg">Write $ settings to GRBL</button>
+        </div>
+        <div class="hint" id="cfgPreview"></div>
+      </div>
+    </div>
+  </div>
+</main>
+
+<div id="toast"></div>
+
+<script>
+"use strict";
+const $ = id => document.getElementById(id);
+const J = ["j1","j2","j3"];
+const JMETA = {
+  j1:{name:"J1  Base",   sub:"1 motor · X axis",              color:"var(--j1)"},
+  j2:{name:"J2  Shoulder",sub:"2 motors · Y+A · 8:1",         color:"var(--j2)"},
+  j3:{name:"J3  Elbow",  sub:"1 motor · Z axis · 8:1",        color:"var(--j3)"},
+};
+const STEPS = [0.1, 0.5, 1, 5, 10, 45];
+
+let CFG=null, ST=null, logSince=0, step=1, poses={}, seqs={}, curSeq=[], curSeqName="";
+let busy=false;
+
+/* ---------------- helpers ---------------- */
+function toast(msg, kind=""){
+  const t=$("toast"); t.textContent=msg; t.className="show "+kind;
+  clearTimeout(toast._t); toast._t=setTimeout(()=>t.className="",2600);
+}
+async function api(path, data){
+  try{
+    const r = await fetch(path, data===undefined ? {} : {
+      method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify(data)});
+    const j = await r.json();
+    if(j.ok===false && j.message) toast(j.message,"err");
+    return j;
+  }catch(e){ toast("Server unreachable","err"); return {ok:false}; }
+}
+const fmt=(v,d=1)=>(v==null||isNaN(v))?"--":Number(v).toFixed(d);
+
+/* ---------------- joint panel ---------------- */
+function buildJoints(){
+  $("joints").innerHTML = J.map(j=>{
+    const m=JMETA[j];
+    return `<div class="joint" id="jt-${j}">
+      <div class="top">
+        <span class="name" style="color:${m.color}">${m.name}</span>
+        <span class="sub">${m.sub}</span>
+        <span class="val mono" id="v-${j}">0.0&deg;</span>
+      </div>
+      <div class="bar"><u id="bu-${j}" style="background:${m.color}"></u><i id="bi-${j}"></i></div>
+      <div class="jogrow">
+        <button data-j="${j}" data-m="-10">&#171;&#171;</button>
+        <button data-j="${j}" data-m="-3">&#171;</button>
+        <button data-j="${j}" data-m="-1">&#8249;</button>
+        <button data-j="${j}" data-m="1">&#8250;</button>
+        <button data-j="${j}" data-m="3">&#187;</button>
+        <button data-j="${j}" data-m="10">&#187;&#187;</button>
+      </div>
+      <div class="row" style="margin-top:7px">
+        <input type="number" class="mono" id="t-${j}" step="1" style="flex:1">
+        <button data-goto="${j}">Go</button>
+      </div>
+    </div>`;
+  }).join("");
+
+  $("joints").querySelectorAll("button[data-j]").forEach(b=>{
+    b.onclick=()=>jog(b.dataset.j, step*parseFloat(b.dataset.m));
+  });
+  $("joints").querySelectorAll("button[data-goto]").forEach(b=>{
+    b.onclick=()=>{
+      const j=b.dataset.goto, v=parseFloat($("t-"+j).value);
+      if(isNaN(v)) return;
+      api("/api/goto_joints",{[j]:v, feed:+$("moveFeed").value});
+    };
+  });
+}
+
+function buildSteps(){
+  $("stepBtns").innerHTML = STEPS.map((s,i)=>
+    `<button data-s="${s}" class="${s===step?"on":""}">${s}&deg;</button>`).join("");
+  $("stepBtns").querySelectorAll("button").forEach(b=>{
+    b.onclick=()=>{ step=parseFloat(b.dataset.s); buildSteps(); };
+  });
+}
+
+async function jog(joint, delta){
+  if(!ST || !ST.grbl.connected) return toast("Not connected","err");
+  await api("/api/jog",{joint, delta, feed:+$("jogFeed").value});
+}
+
+/* ---------------- status polling ---------------- */
+async function poll(){
+  try{
+    const r = await fetch("/api/status?since="+logSince);
+    ST = await r.json();
+    render();
+  }catch(e){ /* server restarting */ }
+  setTimeout(poll, 220);
+}
+
+function render(){
+  const g=ST.grbl, a=ST.angles;
+
+  /* header */
+  const map={Idle:"ok",Run:"run",Jog:"run",Home:"run",Hold:"warn",Door:"warn",Alarm:"err",Check:"warn"};
+  $("stateDot").className="dot "+(g.connected?(map[g.state]||"warn"):"");
+  $("stateTxt").textContent = g.connected
+      ? g.state + (g.sim?" (sim)":"") + (g.queued?"  ·  "+g.queued+" queued":"")
+      : "Disconnected";
+  $("btnConnect").textContent = g.connected?"Disconnect":"Connect";
+  $("btnConnect").className = g.connected?"":"primary";
+  $("posPill").innerHTML = J.map((j,i)=>
+    `<span style="color:${JMETA[j].color}">${j.toUpperCase()}</span> ${fmt(a[j])}&deg;`).join(" &nbsp; ");
+  $("feedNow").textContent = g.feed?("feed "+fmt(g.feed,0)+" deg/min"):"";
+
+  /* banners */
+  $("alarmBanner").classList.toggle("show", !!g.alarm);
+  $("alarmTxt").textContent = g.alarm||"";
+  const w = !ST.limits_ok ? ST.limits_msg : "";
+  $("warnBanner").classList.toggle("show", !!w);
+  $("warnTxt").textContent = w;
+
+  /* joints */
+  if(CFG) J.forEach(j=>{
+    const lim=CFG.limits[j], v=a[j];
+    const pct = Math.max(0,Math.min(100,(v-lim.min)/(lim.max-lim.min)*100));
+    $("v-"+j).textContent = fmt(v)+"°";
+    $("bi-"+j).style.left = "calc("+pct+"% - 1.5px)";
+    const u=$("bu-"+j); u.style.left="0"; u.style.width=pct+"%";
+    const out = v<lim.min-0.01 || v>lim.max+0.01;
+    $("jt-"+j).style.borderColor = out ? "var(--err)" : "var(--line)";
+    if(document.activeElement !== $("t-"+j)) $("t-"+j).value = v.toFixed(2);
+  });
+
+  /* tip readout */
+  if(ST.fk){
+    $("tipReadout").innerHTML =
+      `X ${fmt(ST.fk.x)}  Y ${fmt(ST.fk.y)}  Z ${fmt(ST.fk.z)} mm &nbsp;·&nbsp; pitch ${fmt(ST.fk.pitch)}&deg;`;
+    drawArm(a, ST.fk);
+  }
+
+  /* sequence */
+  const s=ST.sequence;
+  $("seqProgress").textContent = s.running ? `Running "${s.name}"  step ${s.step}/${s.total}` : "";
+  $("btnSeqRun").disabled = s.running;
+
+  /* logs */
+  if(ST.logs && ST.logs.length){
+    const c=$("console"), stick = c.scrollTop+c.clientHeight >= c.scrollHeight-30;
+    ST.logs.forEach(l=>{
+      logSince=Math.max(logSince,l.id);
+      const d=document.createElement("div");
+      d.className="l-"+l.level;
+      d.textContent=`${l.t} ${l.level==="tx"?"▸":l.level==="rx"?"◂":"·"} ${l.msg}`;
+      c.appendChild(d);
+    });
+    while(c.childElementCount>500) c.removeChild(c.firstChild);
+    if(stick) c.scrollTop=c.scrollHeight;
+  }
+}
+
+/* ---------------- drawing ---------------- */
+let wsPts=null;
+function drawArm(a, fk){
+  const G=CFG.geometry, W=460,H=330;
+  const reach=G.l1+G.l2+G.base_offset+30;
+  const sc=Math.min((W-70)/(reach*1.15), (H-60)/((G.base_height+G.l1+G.l2)*1.15));
+  const ox=52, oy=H-48;
+  const px=r=>ox+r*sc, py=z=>oy-z*sc;
+
+  const sh=fk.shoulder, el=fk.elbow;
+  let env="";
+  if(wsPts && wsPts.length){
+    env = `<polyline points="${wsPts.map(p=>px(p[0])+","+py(p[1])).join(" ")}"
+            fill="none" stroke="#2f81f7" stroke-width="1" opacity=".18"/>`;
+  }
+  // ground + grid
+  let grid="";
+  for(let r=0;r<=reach;r+=50) grid+=`<line x1="${px(r)}" y1="${py(0)}" x2="${px(r)}" y2="18" stroke="#1a212b"/>`;
+  for(let z=0;z<=G.base_height+G.l1+G.l2;z+=50) grid+=`<line x1="${ox}" y1="${py(z)}" x2="${W-8}" y2="${py(z)}" stroke="#1a212b"/>`;
+
+  $("side").innerHTML = `
+    ${grid}${env}
+    <line x1="8" y1="${py(0)}" x2="${W-8}" y2="${py(0)}" stroke="#3d4855" stroke-width="2"/>
+    <rect x="${px(-28)}" y="${py(0)-6}" width="${56*sc}" height="8" rx="2" fill="#30363d"/>
+    <line x1="${px(0)}" y1="${py(0)}" x2="${px(sh.r)}" y2="${py(sh.z)}" stroke="#484f58" stroke-width="9" stroke-linecap="round"/>
+    <line x1="${px(sh.r)}" y1="${py(sh.z)}" x2="${px(el.r)}" y2="${py(el.z)}" stroke="var(--j2)" stroke-width="8" stroke-linecap="round"/>
+    <line x1="${px(el.r)}" y1="${py(el.z)}" x2="${px(fk.r)}" y2="${py(fk.z)}" stroke="var(--j3)" stroke-width="6" stroke-linecap="round"/>
+    <circle cx="${px(sh.r)}" cy="${py(sh.z)}" r="7" fill="#0b0e13" stroke="var(--j2)" stroke-width="3"/>
+    <circle cx="${px(el.r)}" cy="${py(el.z)}" r="6" fill="#0b0e13" stroke="var(--j3)" stroke-width="3"/>
+    <circle cx="${px(fk.r)}" cy="${py(fk.z)}" r="4.5" fill="#fff"/>
+    <line x1="${px(fk.r)}" y1="${py(fk.z)}" x2="${px(fk.r)}" y2="${py(0)}" stroke="#fff" stroke-dasharray="2 4" opacity=".3"/>
+    <text class="vlabel" x="10" y="16">SIDE VIEW &mdash; reach plane</text>
+    <text class="vlabel" x="${px(fk.r)+8}" y="${py(fk.z)-8}">${fmt(fk.r,0)}, ${fmt(fk.z,0)}</text>`;
+
+  // top view
+  const T=200, tc=T/2, tsc=(T/2-16)/(G.l1+G.l2+G.base_offset);
+  const ex=tc+el.x*tsc, ey=tc-el.y*tsc, tx2=tc+fk.x*tsc, ty2=tc-fk.y*tsc;
+  let rings="";
+  for(let rr of [0.33,0.66,1]) rings+=`<circle cx="${tc}" cy="${tc}" r="${(T/2-16)*rr}" fill="none" stroke="#1a212b"/>`;
+  $("top").innerHTML = `
+    ${rings}
+    <line x1="${tc}" y1="8" x2="${tc}" y2="${T-8}" stroke="#1a212b"/>
+    <line x1="8" y1="${tc}" x2="${T-8}" y2="${tc}" stroke="#1a212b"/>
+    <line x1="${tc}" y1="${tc}" x2="${ex}" y2="${ey}" stroke="var(--j2)" stroke-width="6" stroke-linecap="round"/>
+    <line x1="${ex}" y1="${ey}" x2="${tx2}" y2="${ty2}" stroke="var(--j3)" stroke-width="4" stroke-linecap="round"/>
+    <circle cx="${tc}" cy="${tc}" r="8" fill="#0b0e13" stroke="var(--j1)" stroke-width="3"/>
+    <circle cx="${tx2}" cy="${ty2}" r="4" fill="#fff"/>
+    <text class="vlabel" x="8" y="15">TOP &mdash; J1 ${fmt(a.j1)}&deg;</text>`;
+}
+
+/* ---------------- IK preview ---------------- */
+let ikTimer=null;
+function ikPreview(){
+  clearTimeout(ikTimer);
+  ikTimer=setTimeout(async ()=>{
+    const b={x:+$("tx").value, y:+$("ty").value, z:+$("tz").value, elbow_up:$("elbowUp").checked};
+    if([b.x,b.y,b.z].some(isNaN)) return;
+    const r=await fetch("/api/solve",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(b)});
+    const j=await r.json();
+    const el=$("ikOut");
+    if(j.ok){
+      const s=j.solution;
+      el.style.color="var(--ok)";
+      el.innerHTML = `&#10003; solution &nbsp; ` + J.map(k=>
+        `<span style="color:${JMETA[k].color}">${k.toUpperCase()}</span> ${fmt(s[k],2)}&deg;`).join(" &nbsp; ")
+        + `<div style="color:var(--dim);margin-top:3px">elbow ${s.elbow_up?"up":"down"}</div>`;
+      $("btnGoJoint").disabled=$("btnGoLinear").disabled=false;
+    }else{
+      el.style.color="var(--err)"; el.textContent="✗ "+j.message;
+      $("btnGoJoint").disabled=$("btnGoLinear").disabled=true;
+    }
+  },120);
+}
+["tx","ty","tz"].forEach(id=>$(id).addEventListener("input",ikPreview));
+$("elbowUp").addEventListener("change",()=>{
+  api("/api/config",{motion:{elbow_up:$("elbowUp").checked}}); ikPreview();
+});
+
+/* ---------------- poses ---------------- */
+function renderPoses(){
+  const names=Object.keys(poses);
+  $("poseList").innerHTML = names.length ? names.map(n=>{
+    const p=poses[n];
+    return `<div class="item">
+      <span class="nm" style="cursor:pointer" data-go="${encodeURIComponent(n)}"><b>${n}</b></span>
+      <span class="ang mono">${fmt(p.j1)} / ${fmt(p.j2)} / ${fmt(p.j3)}</span>
+      <button data-add="${encodeURIComponent(n)}" title="Add to sequence">+seq</button>
+      <button data-del="${encodeURIComponent(n)}" title="Delete">&times;</button>
+    </div>`;
+  }).join("") : `<div class="empty">No poses saved yet</div>`;
+
+  $("poseList").querySelectorAll("[data-go]").forEach(e=>e.onclick=()=>
+    api("/api/pose/goto",{name:decodeURIComponent(e.dataset.go), feed:+$("moveFeed").value}));
+  $("poseList").querySelectorAll("[data-del]").forEach(e=>e.onclick=async()=>{
+    const r=await api("/api/pose/delete",{name:decodeURIComponent(e.dataset.del)});
+    poses=r.poses||{}; renderPoses();});
+  $("poseList").querySelectorAll("[data-add]").forEach(e=>e.onclick=()=>{
+    const p=poses[decodeURIComponent(e.dataset.add)];
+    curSeq.push({...p, dwell:+$("seqDwell").value}); renderSeq(); toast("Added to sequence","ok");});
+}
+$("btnSavePose").onclick=async()=>{
+  const name=$("poseName").value.trim();
+  if(!name) return toast("Give the pose a name","err");
+  const r=await api("/api/pose/save",{name});
+  poses=r.poses||poses; $("poseName").value=""; renderPoses(); toast("Pose saved","ok");
+};
+
+/* ---------------- sequences ---------------- */
+function renderSeq(){
+  $("seqList").innerHTML = curSeq.length ? curSeq.map((s,i)=>`
+    <div class="item ${ST&&ST.sequence.running&&ST.sequence.step===i+1?"active":""}">
+      <span style="color:var(--dim);width:18px">${i+1}</span>
+      <span class="nm mono">${fmt(s.j1)} / ${fmt(s.j2)} / ${fmt(s.j3)}</span>
+      <span class="ang">${(s.dwell||0)}s</span>
+      <button data-up="${i}">&#9650;</button>
+      <button data-rm="${i}">&times;</button>
+    </div>`).join("") : `<div class="empty">Empty &mdash; add poses to build a motion</div>`;
+  $("seqList").querySelectorAll("[data-rm]").forEach(e=>e.onclick=()=>{
+    curSeq.splice(+e.dataset.rm,1); renderSeq();});
+  $("seqList").querySelectorAll("[data-up]").forEach(e=>e.onclick=()=>{
+    const i=+e.dataset.up; if(i<1)return;
+    [curSeq[i-1],curSeq[i]]=[curSeq[i],curSeq[i-1]]; renderSeq();});
+}
+function renderSeqSelect(){
+  const names=Object.keys(seqs);
+  $("seqSelect").innerHTML = `<option value="">-- unsaved --</option>` +
+    names.map(n=>`<option ${n===curSeqName?"selected":""}>${n}</option>`).join("");
+}
+$("seqSelect").onchange=()=>{
+  curSeqName=$("seqSelect").value;
+  curSeq = curSeqName ? JSON.parse(JSON.stringify(seqs[curSeqName])) : [];
+  $("seqName").value=curSeqName; renderSeq();
+};
+$("btnSeqNew").onclick=()=>{curSeq=[];curSeqName="";$("seqName").value="";renderSeqSelect();renderSeq();};
+$("btnSeqAdd").onclick=()=>{
+  if(!ST) return; const a=ST.angles;
+  curSeq.push({j1:+a.j1.toFixed(2),j2:+a.j2.toFixed(2),j3:+a.j3.toFixed(2),dwell:+$("seqDwell").value});
+  renderSeq();
+};
+$("btnSeqSave").onclick=async()=>{
+  const name=$("seqName").value.trim();
+  if(!name) return toast("Name the sequence","err");
+  const r=await api("/api/sequence/save",{name,steps:curSeq});
+  seqs=r.sequences||seqs; curSeqName=name; renderSeqSelect(); toast("Sequence saved","ok");
+};
+$("btnSeqDel").onclick=async()=>{
+  if(!curSeqName) return;
+  const r=await api("/api/sequence/delete",{name:curSeqName});
+  seqs=r.sequences||{}; curSeqName=""; curSeq=[]; renderSeqSelect(); renderSeq();
+};
+$("btnSeqRun").onclick=()=>api("/api/sequence/run",{name:curSeqName||"unsaved",steps:curSeq,loop:$("seqLoop").checked});
+$("btnSeqStop").onclick=()=>api("/api/sequence/stop",{});
+
+/* ---------------- settings ---------------- */
+function fillCfg(){
+  const g=CFG.geometry, d=CFG.drivetrain;
+  $("c_bh").value=g.base_height; $("c_bo").value=g.base_offset;
+  $("c_l1").value=g.l1; $("c_l2").value=g.l2;
+  $("c_msr").value=d.motor_steps_per_rev; $("c_us").value=d.microsteps;
+  $("c_g1").value=d.gear_ratio.j1; $("c_g2").value=d.gear_ratio.j2; $("c_g3").value=d.gear_ratio.j3;
+  $("c_i1").checked=d.invert.j1; $("c_i2").checked=d.invert.j2; $("c_i3").checked=d.invert.j3;
+  $("c_home").checked=CFG.homing.enabled;
+  $("limGrid").innerHTML = J.map(j=>`
+    <div><label class="f">${j.toUpperCase()} min</label><input type="number" id="lm-${j}" value="${CFG.limits[j].min}" step="1"></div>
+    <div><label class="f">${j.toUpperCase()} max</label><input type="number" id="lM-${j}" value="${CFG.limits[j].max}" step="1"></div>`).join("");
+  $("jogFeed").value=CFG.motion.jog_feed_deg_per_min;
+  $("moveFeed").value=CFG.motion.feed_deg_per_min;
+  $("elbowUp").checked=CFG.motion.elbow_up;
+  const h=CFG.homing.home_angles;
+  $("hz1").value=h.j1; $("hz2").value=h.j2; $("hz3").value=h.j3;
+  showSpd();
+}
+function showSpd(){
+  const ms=+$("c_msr").value * +$("c_us").value;
+  const s=j=>(ms*+$("c_g"+j[1]).value/360).toFixed(4);
+  $("spdOut").innerHTML =
+   `steps/degree &rarr; $100=${s("j1")} &nbsp; $101=${s("j2")} &nbsp; $102=${s("j3")}`;
+}
+["c_msr","c_us","c_g1","c_g2","c_g3"].forEach(id=>$(id).addEventListener("input",showSpd));
+
+$("btnSaveCfg").onclick=async()=>{
+  const patch={
+    geometry:{base_height:+$("c_bh").value, base_offset:+$("c_bo").value, l1:+$("c_l1").value, l2:+$("c_l2").value},
+    drivetrain:{motor_steps_per_rev:+$("c_msr").value, microsteps:+$("c_us").value,
+      gear_ratio:{j1:+$("c_g1").value,j2:+$("c_g2").value,j3:+$("c_g3").value},
+      invert:{j1:$("c_i1").checked,j2:$("c_i2").checked,j3:$("c_i3").checked}},
+    limits:Object.fromEntries(J.map(j=>[j,{min:+$("lm-"+j).value,max:+$("lM-"+j).value}])),
+    motion:{jog_feed_deg_per_min:+$("jogFeed").value, feed_deg_per_min:+$("moveFeed").value,
+            elbow_up:$("elbowUp").checked},
+    homing:{enabled:$("c_home").checked,
+            home_angles:{j1:+$("hz1").value,j2:+$("hz2").value,j3:+$("hz3").value}},
+  };
+  const r=await api("/api/config",patch);
+  CFG=r.config; wsPts=null; loadWorkspace(); toast("Config saved","ok"); ikPreview();
+};
+$("btnPushCfg").onclick=async()=>{
+  const r=await api("/api/push_settings",{});
+  if(r.ok) toast("Sent "+r.lines.length+" settings to GRBL","ok");
+};
+
+/* ---------------- connection ---------------- */
+async function loadPorts(){
+  const r=await (await fetch("/api/ports")).json();
+  $("port").innerHTML = r.ports.map(p=>
+    `<option value="${p.device}">${p.device} &mdash; ${p.description||""}</option>`).join("");
+  if(CFG && CFG.serial.port) $("port").value=CFG.serial.port;
+}
+$("refreshPorts").onclick=loadPorts;
+$("btnConnect").onclick=async()=>{
+  if(ST && ST.grbl.connected){ await api("/api/disconnect",{}); return; }
+  const r=await api("/api/connect",{port:$("port").value, baud:CFG?CFG.serial.baud:115200});
+  if(r.ok) toast(r.message,"ok");
+};
+
+/* ---------------- machine buttons ---------------- */
+$("btnEstop").onclick=()=>{api("/api/estop",{}); toast("E-STOP","err");};
+$("btnHold").onclick=()=>api("/api/hold",{});
+$("btnResume").onclick=()=>api("/api/resume",{});
+$("btnUnlock").onclick=()=>api("/api/unlock",{});
+$("btnStopJog").onclick=()=>api("/api/jog_cancel",{});
+$("btnPark").onclick=()=>api("/api/park",{});
+$("btnHome").onclick=()=>api("/api/home",{});
+$("btnSetHome").onclick=async()=>{
+  await api("/api/set_home",{j1:+$("hz1").value,j2:+$("hz2").value,j3:+$("hz3").value});
+  toast("Position zeroed","ok");
+};
+$("btnHere").onclick=()=>{
+  if(!ST||!ST.fk) return;
+  $("tx").value=ST.fk.x.toFixed(1); $("ty").value=ST.fk.y.toFixed(1); $("tz").value=ST.fk.z.toFixed(1);
+  ikPreview();
+};
+$("btnGoJoint").onclick=()=>api("/api/goto_xyz",
+  {x:+$("tx").value,y:+$("ty").value,z:+$("tz").value,linear:false,feed:+$("moveFeed").value});
+$("btnGoLinear").onclick=()=>api("/api/goto_xyz",
+  {x:+$("tx").value,y:+$("ty").value,z:+$("tz").value,linear:true,feed:+$("moveFeed").value});
+
+$("btnMdi").onclick=sendMdi;
+$("mdi").addEventListener("keydown",e=>{if(e.key==="Enter")sendMdi();});
+function sendMdi(){
+  const line=$("mdi").value.trim(); if(!line) return;
+  api("/api/mdi",{line}); $("mdi").value="";
+}
+$("btnClearLog").onclick=()=>$("console").innerHTML="";
+
+/* ---------------- tabs ---------------- */
+document.querySelectorAll(".tabs button").forEach(b=>b.onclick=()=>{
+  document.querySelectorAll(".tabs button").forEach(x=>x.classList.remove("on"));
+  document.querySelectorAll(".pane").forEach(p=>p.classList.remove("on"));
+  b.classList.add("on"); $("pane-"+b.dataset.tab).classList.add("on");
+});
+
+/* ---------------- keyboard ---------------- */
+const KEYMAP={a:["j1",-1],d:["j1",1],w:["j2",1],s:["j2",-1],q:["j3",-1],e:["j3",1]};
+document.addEventListener("keydown",ev=>{
+  const t=ev.target.tagName;
+  if(t==="INPUT"||t==="TEXTAREA"||t==="SELECT") return;
+  const k=ev.key.toLowerCase();
+  if(k===" "){ ev.preventDefault(); $("btnEstop").click(); return; }
+  if(k>="1"&&k<="6"){ const i=+k-1; if(STEPS[i]!==undefined){step=STEPS[i];buildSteps();} return; }
+  if(KEYMAP[k]){ ev.preventDefault(); const [j,s]=KEYMAP[k]; jog(j, step*s); }
+});
+
+/* ---------------- boot ---------------- */
+async function loadWorkspace(){
+  try{ wsPts=(await (await fetch("/api/workspace")).json()).points; }catch(e){}
+}
+(async function boot(){
+  CFG=(await (await fetch("/api/config")).json()).config;
+  const c=(await (await fetch("/api/config")).json()).config;
+  poses=c.poses||{}; seqs=c.sequences||{};
+  buildSteps(); buildJoints(); fillCfg(); renderPoses(); renderSeqSelect(); renderSeq();
+  await loadPorts(); await loadWorkspace();
+  ikPreview();
+  poll();
+})();
+</script>
+</body>
+</html>
