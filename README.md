@@ -12,3 +12,7 @@ The gear boxes are just -7:1 planatary gearboxes. I am planning on making -8:1 v
 
 This project is still very much a work in progress. I have plan to add two extra joints at the end for wrist movement, and a camera mount and teleop device for AI training but thats all in due time. My current issue is my power supply decided it never wants to turn on again, so we are at a pause until I fix it or get a new one.
 
+This is what I used for motor control. The Arduino is just flashed with the GRBL CNC example code.
+<img width="638" height="666" alt="image" src="https://github.com/user-attachments/assets/c774a26e-c027-4bdf-a33c-374b1c069691" />
+
+https://www.amazon.com/DAOKI-Expansion-Arduino-Heatsink-Engraving/dp/B08KFYKKN4/ref=sr_1_7?channelId=500&clpRedir=Y&dib=eyJ2IjoiMSJ9.IRom5U9-uybtpAHm04gl0RDveyz4ApBAfZI7TIns5In24DaFFd-CcqObJPWkXywpX0t31gAwj8FQIM6QSXsvPGERS23B8MwAzbSWdxIlTRcOCUSXQKCVTgwNjJ2LVbp7G4FcLMpwTxyz4B22bKnFO6i4x1r3633dnW_HFQVz7-OytSd6QJRluqejNIsh61z8V0a30vlN4bz6PSQNWE0KqN0vnbx92-q7FUcl3-xljHM.v6Bls46RiwajI_9v4o9KEa6ACMuN2AJASI7GJDpZqA4&dib_tag=se&keywords=arduino%2Bcnc%2Bshield&plpRedirect=mhFallback&qid=1789353170&sr=8-7&th=1
